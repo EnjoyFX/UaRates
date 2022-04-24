@@ -1,3 +1,4 @@
+import argparse
 import json
 import logging
 from datetime import datetime, timedelta
@@ -12,6 +13,7 @@ import pandas as pd
 import requests
 
 
+__version__ = '1.0.1'
 logging.basicConfig(filename='bankurs.log', level=logging.INFO,
                     format='%(asctime)s %(filename)s %(funcName)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -44,8 +46,8 @@ class RateForPeriod:
             logger.info('[Dates swapped] start_date > end_date')
 
     def get_rates(self):
-        logger.info(
-            f'Getting {self.currencies} rates for {self.start_date}-{self.end_date}...')
+        logger.info(f'Getting {self.currencies} rates for '
+                    f'{self.start_date}-{self.end_date}...')
         the_date = self.start_date
         data = []
         while the_date <= self.end_date:
@@ -113,11 +115,21 @@ class RateForPeriod:
 
 
 if __name__ == '__main__':
-    # TODO: Need to add support of command line
-    # example of usage:
-    cur = ('EUR', 'USD')
-    start_date = '2022-02-01'
-    end_date = '2022-02-10'
+    txt = f'Extraction of official FX rates of National Bank of Ukraine'\
+          f' (c) 2022 Andy Reo, version {__version__}'
+    parser = argparse.ArgumentParser(description=txt)
+    parser.add_argument("currencies", type=str,
+                        help="code(s) of currency - USD, EUR, ...")
+    parser.add_argument("start_date", type=str,
+                        help="start date in format yyyy-mm-dd")
+    parser.add_argument("end_date", type=str,
+                        help="end date in format yyyy-mm-dd")
+    args = parser.parse_args()
+
+    cur = args.currencies  # ('EUR', 'USD')
+    start_date = args.start_date  # '2022-02-01'
+    end_date = args.end_date  # '2022-02-02'
+
     c = RateForPeriod(cur, start_date, end_date)
     rates = c.get_rates()
     c.save_xlsx(f'rates_{start_date}_{end_date}.xlsx')
