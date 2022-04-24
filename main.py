@@ -39,11 +39,15 @@ class RateForPeriod:
             currencies = list(currencies)
 
         self.currencies = currencies
-        self.start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        self.end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        d_fmt = '%Y-%m-%d'  # agreed date format for dates passed
+        self.start_date = datetime.strptime(start_date, d_fmt)
+        self.end_date = datetime.strptime(end_date, d_fmt)
         if self.start_date > self.end_date:
             self.start_date, self.end_date = self.end_date, self.start_date
             logger.info('[Dates swapped] start_date > end_date')
+        curs = '_'.join(currencies)
+        self.filename = f'rates_{curs}_{self.start_date.strftime(d_fmt)}_' \
+                        f'{self.end_date.strftime(d_fmt)}'
 
     def get_rates(self):
         logger.info(f'Getting {self.currencies} rates for '
@@ -126,10 +130,8 @@ if __name__ == '__main__':
                         help="end date in format yyyy-mm-dd")
     args = parser.parse_args()
 
-    cur = args.currencies  # ('EUR', 'USD')
-    start_date = args.start_date  # '2022-02-01'
-    end_date = args.end_date  # '2022-02-02'
-
-    c = RateForPeriod(cur, start_date, end_date)
+    c = RateForPeriod(args.currencies,
+                      start_date=args.start_date,
+                      end_date=args.end_date)
     rates = c.get_rates()
-    c.save_xlsx(f'rates_{start_date}_{end_date}.xlsx')
+    c.save_xlsx(f'{c.filename}.xlsx')
