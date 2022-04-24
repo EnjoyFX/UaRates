@@ -15,3 +15,6 @@ venv.bak/
 
 # Excel files
 *.xlsx
+
+# Logs:
+*.log

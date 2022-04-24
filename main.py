@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timedelta
 from string import ascii_uppercase
 
@@ -10,6 +11,11 @@ import pandas as pd
 
 import requests
 
+
+logging.basicConfig(filename='bankurs.log', level=logging.INFO,
+                    format='%(asctime)s %(filename)s %(funcName)s %(message)s')
+logger = logging.getLogger(__name__)
+
 SITE = 'https://bank.gov.ua/'
 CMD = 'NBUStatService/v1/statdirectory/exchange?valcode={0}&date={1}&json'
 API_CALL = f'{SITE}{CMD}'
@@ -17,7 +23,7 @@ API_CALL = f'{SITE}{CMD}'
 
 class RateForPeriod:
     def __init__(self, currencies, start_date: str, end_date: str):
-        self.df = None
+        self.df = None  # will be dataFrame with rates
         if isinstance(currencies, str):
             currencies = currencies.replace(' ', '')
             if ',' in currencies:
@@ -25,7 +31,7 @@ class RateForPeriod:
             else:
                 currencies = [currencies]
         elif not isinstance(currencies, (list, tuple,)):
-            print('[currencies parameter]: allowed only str or list')
+            logger.warning('[currencies parameter]: allowed only str or list')
             raise
         if isinstance(currencies, tuple):
             currencies = list(currencies)
@@ -35,19 +41,21 @@ class RateForPeriod:
         self.end_date = datetime.strptime(end_date, '%Y-%m-%d')
         if self.start_date > self.end_date:
             self.start_date, self.end_date = self.end_date, self.start_date
-            print('[Dates swapped] start_date > end_date')
+            logger.info('[Dates swapped] start_date > end_date')
 
     def get_rates(self):
+        logger.info(
+            f'Getting {self.currencies} rates for {self.start_date}-{self.end_date}...')
         the_date = self.start_date
         data = []
         while the_date <= self.end_date:
             fmt_date = the_date.strftime("%Y%m%d")
-            cur = [the_date.strftime('%Y-%m-%d')]
+            row = [the_date.strftime('%Y-%m-%d')]
             for currency in self.currencies:
                 one = self._get_rate_per_date(currency.lower(), fmt_date)
-                cur.append(one)
+                row.append(one)
             the_date = the_date + timedelta(days=1)
-            data.append(cur)
+            data.append(row)
 
         df = pd.DataFrame(data, columns=['Date']+self.currencies)
         self.df = df
@@ -72,13 +80,13 @@ class RateForPeriod:
         ws.column_dimensions[ascii_uppercase[0]].width = 11
         try:
             wb.save(filename)
-            print(f'File {filename} saved OK...')
+            logger.info(f'File {filename} saved OK...')
         except Exception as err:
-            print(f'Error during saving file {filename}: {err}')
+            logger.warning(f'Error during saving file {filename}: {err}')
 
     def _get_rate_per_date(self, currency: str, yyyymmdd: str):
         api = API_CALL.format(currency, yyyymmdd)
-        # print(api)
+        # logger.debug(api)
         result = ''
         response = requests.get(api, headers=self._headers())
         if response.status_code == 200:
@@ -89,9 +97,10 @@ class RateForPeriod:
                 if rate:
                     result = rate
                 else:
-                    print(response.get('message'))
+                    logger.debug(response.get('message'))
         else:
-            print(response.status_code, response.content.decode())
+            logger.warning(
+                f'{response.status_code}: {response.content.decode()}')
         return result
 
     def _headers(self, user_agent=None):
@@ -105,9 +114,10 @@ class RateForPeriod:
 
 if __name__ == '__main__':
     # TODO: Need to add support of command line
+    # example of usage:
     cur = ('EUR', 'USD')
     start_date = '2022-02-01'
     end_date = '2022-02-10'
     c = RateForPeriod(cur, start_date, end_date)
     rates = c.get_rates()
-    c.save_xlsx('rate.xlsx')
+    c.save_xlsx(f'rates_{start_date}_{end_date}.xlsx')
