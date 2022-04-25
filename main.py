@@ -25,7 +25,10 @@ API_CALL = f'{SITE}{CMD}'
 
 class RateForPeriod:
     def __init__(self, currencies, start_date: str, end_date: str):
-        self.df = None  # will be dataFrame with rates
+        if not currencies:
+            logger.warning(
+                f'[currencies parameter] "{currencies}" value is not allowed')
+            raise
         if isinstance(currencies, str):
             currencies = currencies.replace(' ', '')
             if ',' in currencies:
@@ -48,6 +51,7 @@ class RateForPeriod:
         curs = '_'.join(currencies)
         self.filename = f'rates_{curs}_{self.start_date.strftime(d_fmt)}_' \
                         f'{self.end_date.strftime(d_fmt)}'
+        self.df = None  # will be dataFrame with rates
 
     def get_rates(self):
         logger.info(f'Getting {self.currencies} rates for '
@@ -68,6 +72,9 @@ class RateForPeriod:
         return self.df
 
     def save_xlsx(self, filename: str):
+        if self.df.empty:
+            logger.warning('[Save error] DataFrame is empty')
+            raise
         headers = list(self.df)  # get the headers
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -87,8 +94,10 @@ class RateForPeriod:
         try:
             wb.save(filename)
             logger.info(f'File {filename} saved OK...')
+            return filename
         except Exception as err:
             logger.warning(f'Error during saving file {filename}: {err}')
+            return
 
     def _get_rate_per_date(self, currency: str, yyyymmdd: str):
         api = API_CALL.format(currency, yyyymmdd)
@@ -111,7 +120,8 @@ class RateForPeriod:
 
     def _headers(self, user_agent=None):
         def_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        user_agent = user_agent if not None else def_user_agent
+        if user_agent is None:
+            user_agent = def_user_agent
         headers = {
             'User-Agent': user_agent
         }
