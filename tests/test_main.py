@@ -29,7 +29,8 @@ class TestRateForPeriod(TestCase):
         t.get_rates()
         assert expected == t.save_xlsx(received), "Error during save file"
         assert os.path.exists(expected), "File not saved!"
-        os.remove(expected)
+        if os.path.exists(expected):
+            os.remove(expected)
 
     def test__get_rate_per_date(self):
         t = RateForPeriod('EUR', '2022-01-01', '2022-01-01')
