@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 SITE = 'https://bank.gov.ua/'
 CMD = 'NBUStatService/v1/statdirectory/exchange?valcode={0}&date={1}&json'
 API_CALL = f'{SITE}{CMD}'
-
+# based on API manual https://bank.gov.ua/ua/open-data/api-dev
 
 class RateForPeriod:
     def __init__(self, currencies, start_date: str, end_date: str):
