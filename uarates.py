@@ -14,7 +14,7 @@ import requests
 
 
 __version__ = '1.0.1'
-logging.basicConfig(filename='bankurs.log', level=logging.INFO,
+logging.basicConfig(filename=f'{__name__}.log', level=logging.INFO,
                     format='%(asctime)s %(filename)s %(funcName)s %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ SITE = 'https://bank.gov.ua/'
 CMD = 'NBUStatService/v1/statdirectory/exchange?valcode={0}&date={1}&json'
 API_CALL = f'{SITE}{CMD}'
 # based on API manual https://bank.gov.ua/ua/open-data/api-dev
+
 
 class RateForPeriod:
     def __init__(self, currencies, start_date: str, end_date: str):
@@ -128,20 +129,25 @@ class RateForPeriod:
         return headers
 
 
-if __name__ == '__main__':
+def main():
     txt = f'Extraction of official FX rates of National Bank of Ukraine'\
           f' (c) 2022 Andy Reo, version {__version__}'
+    today = datetime.now().strftime('%Y-%m-%d')
     parser = argparse.ArgumentParser(description=txt)
     parser.add_argument("currencies", type=str,
                         help="code(s) of currency - USD, EUR, ...")
-    parser.add_argument("start_date", type=str,
-                        help="start date in format yyyy-mm-dd")
-    parser.add_argument("end_date", type=str,
-                        help="end date in format yyyy-mm-dd")
+    parser.add_argument("start_date", type=str, nargs='?',
+                        help="start date in format yyyy-mm-dd", default=today)
+    parser.add_argument("end_date", type=str, nargs='?',
+                        help="end date in format yyyy-mm-dd", default=today)
     args = parser.parse_args()
 
-    c = RateForPeriod(args.currencies,
+    c = RateForPeriod(args.currencies.upper(),
                       start_date=args.start_date,
                       end_date=args.end_date)
     rates = c.get_rates()
     c.save_xlsx(f'{c.filename}.xlsx')
+
+
+if __name__ == '__main__':
+    main()

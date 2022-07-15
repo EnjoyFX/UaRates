@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import pandas as pd
 
-from main import RateForPeriod
+from uarates import RateForPeriod
 
 
 class TestRateForPeriod(TestCase):
