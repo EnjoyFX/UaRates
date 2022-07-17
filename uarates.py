@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from string import ascii_uppercase
+from os.path import basename
 
 import openpyxl
 from openpyxl.styles import Font
@@ -14,9 +15,10 @@ import requests
 
 
 __version__ = '1.0.1'
-logging.basicConfig(filename=f'{__name__}.log', level=logging.INFO,
+log_name = basename(__file__).split('.')[0]
+logging.basicConfig(filename=f'{log_name}.log', level=logging.INFO,
                     format='%(asctime)s %(filename)s %(funcName)s %(message)s')
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(log_name)
 
 SITE = 'https://bank.gov.ua/'
 CMD = 'NBUStatService/v1/statdirectory/exchange?valcode={0}&date={1}&json'
@@ -70,12 +72,13 @@ class RateForPeriod:
 
         df = pd.DataFrame(data, columns=['Date']+self.currencies)
         self.df = df
-        return self.df
+        return self  # for chain of methods ability
 
     def save_xlsx(self, filename: str):
         if self.df.empty:
-            logger.warning('[Save error] DataFrame is empty')
-            raise
+            e = '[Save error] DataFrame is empty'
+            logger.warning(e)
+            raise Exception(e)
         headers = list(self.df)  # get the headers
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -145,8 +148,7 @@ def main():
     c = RateForPeriod(args.currencies.upper(),
                       start_date=args.start_date,
                       end_date=args.end_date)
-    rates = c.get_rates()
-    c.save_xlsx(f'{c.filename}.xlsx')
+    c.get_rates().save_xlsx(f'{c.filename}.xlsx')
 
 
 if __name__ == '__main__':

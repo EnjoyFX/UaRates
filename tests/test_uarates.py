@@ -12,7 +12,7 @@ class TestRateForPeriod(TestCase):
         expected = pd.DataFrame([['2022-01-01', 30.9226],
                                  ['2022-01-02', 30.9226]],
                                 columns=['Date', 'EUR'])
-        received = t.get_rates()
+        received = t.get_rates().df
         assert received.equals(expected)
 
     def test_save_xlsx(self):
