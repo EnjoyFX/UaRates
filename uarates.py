@@ -14,14 +14,14 @@ import pandas as pd
 import requests
 
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 log_name = basename(__file__).split('.')[0]
 logging.basicConfig(filename=f'{log_name}.log', level=logging.INFO,
                     format='%(asctime)s %(filename)s %(funcName)s %(message)s')
 logger = logging.getLogger(log_name)
 
 SITE = 'https://bank.gov.ua/'
-CMD = 'NBUStatService/v1/statdirectory/exchange?valcode={0}&date={1}&json'
+CMD = 'NBU_Exchange/exchange_site?valcode={0}&start={1}&end={2}&sort=exchangedate&order=desc&json'
 API_CALL = f'{SITE}{CMD}'
 # based on API manual https://bank.gov.ua/ua/open-data/api-dev
 
@@ -55,23 +55,22 @@ class RateForPeriod:
         self.filename = f'rates_{curs}_{self.start_date.strftime(d_fmt)}_' \
                         f'{self.end_date.strftime(d_fmt)}'
         self.df = None  # will be dataFrame with rates
+        self.dates = None
 
     def get_rates(self):
         logger.info(f'Getting {self.currencies} rates for '
                     f'{self.start_date}-{self.end_date}...')
-        the_date = self.start_date
-        data = []
-        while the_date <= self.end_date:
-            fmt_date = the_date.strftime("%Y%m%d")
-            row = [the_date.strftime('%Y-%m-%d')]
-            for currency in self.currencies:
-                one = self._get_rate_per_date(currency.lower(), fmt_date)
-                row.append(one)
-            the_date = the_date + timedelta(days=1)
-            data.append(row)
+        data = {}
+        fmt_date_start = self.start_date.strftime("%Y%m%d")
+        fmt_date_end = self.end_date.strftime("%Y%m%d")
 
-        df = pd.DataFrame(data, columns=['Date']+self.currencies)
-        self.df = df
+        for currency in self.currencies:
+            one = self._get_rates_for_daterange(currency.lower(), fmt_date_start, fmt_date_end)
+            if not data:
+                data = {'Date': self.dates}
+            data[currency] = one
+
+        self.df = pd.DataFrame(data)
         return self  # for chain of methods ability
 
     def save_xlsx(self, filename: str):
@@ -103,24 +102,25 @@ class RateForPeriod:
             logger.warning(f'Error during saving file {filename}: {err}')
             return
 
-    def _get_rate_per_date(self, currency: str, yyyymmdd: str):
-        api = API_CALL.format(currency, yyyymmdd)
+    def _get_rates_for_daterange(self, currency: str, yyyymmdd1: str, yyyymmdd2: str):
+        api = API_CALL.format(currency, yyyymmdd1, yyyymmdd2)
         # logger.debug(api)
         result = ''
         response = requests.get(api, headers=self._headers())
         if response.status_code == 200:
             response = json.loads(response.content.decode())
             if response:
-                response = response[0]
-                rate = response.get('rate')
-                if rate:
-                    result = rate
+                rates = [r.get('rate') for r in response]
+                dates = [r.get('exchangedate') for r in response]
+                if self.dates is None:
+                    self.dates = dates
                 else:
-                    logger.debug(response.get('message'))
+                    if self.dates!=dates:
+                        logger.critical('Different date ranges for currencies!')
         else:
             logger.warning(
                 f'{response.status_code}: {response.content.decode()}')
-        return result
+        return rates
 
     def _headers(self, user_agent=None):
         def_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'

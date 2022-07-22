@@ -9,8 +9,9 @@ from uarates import RateForPeriod
 class TestRateForPeriod(TestCase):
     def test_get_rates(self):
         t = RateForPeriod('EUR', '2022-01-01', '2022-01-02')
-        expected = pd.DataFrame([['2022-01-01', 30.9226],
-                                 ['2022-01-02', 30.9226]],
+        #TODO: need to remove date format sensivity
+        expected = pd.DataFrame([['02.01.2022', 30.9226],
+                                 ['01.01.2022', 30.9226]],
                                 columns=['Date', 'EUR'])
         received = t.get_rates().df
         assert received.equals(expected)
@@ -32,10 +33,10 @@ class TestRateForPeriod(TestCase):
         if os.path.exists(expected):
             os.remove(expected)
 
-    def test__get_rate_per_date(self):
+    def test__get_rates_for_daterange(self):
         t = RateForPeriod('EUR', '2022-01-01', '2022-01-01')
-        received = t._get_rate_per_date('EUR', '20220101')
-        self.assertEqual(str(received), '30.9226')
+        received = t._get_rates_for_daterange('EUR', '20220101', '20220101')
+        self.assertEqual(str(received), '[30.9226]')
 
     def test__headers(self):
         t = RateForPeriod('EUR', '2022-01-01', '2021-12-31')
