@@ -1,18 +1,15 @@
 import argparse
 import json
 import logging
-from datetime import datetime, timedelta
-from string import ascii_uppercase
+from datetime import datetime
 from os.path import basename
+from string import ascii_uppercase
 
 import openpyxl
+import pandas as pd
+import requests
 from openpyxl.styles import Font
 from openpyxl.utils.dataframe import dataframe_to_rows
-
-import pandas as pd
-
-import requests
-
 
 __version__ = '1.0.2'
 log_name = basename(__file__).split('.')[0]
@@ -21,7 +18,8 @@ logging.basicConfig(filename=f'{log_name}.log', level=logging.INFO,
 logger = logging.getLogger(log_name)
 
 SITE = 'https://bank.gov.ua/'
-CMD = 'NBU_Exchange/exchange_site?valcode={0}&start={1}&end={2}&sort=exchangedate&order=desc&json'
+CMD = 'NBU_Exchange/exchange_site?valcode={0}&start={1}&end={2}' \
+      '&sort=exchangedate&order=desc&json'
 API_CALL = f'{SITE}{CMD}'
 # based on API manual https://bank.gov.ua/ua/open-data/api-dev
 
@@ -65,7 +63,9 @@ class RateForPeriod:
         fmt_date_end = self.end_date.strftime("%Y%m%d")
 
         for currency in self.currencies:
-            one = self._get_rates_for_daterange(currency.lower(), fmt_date_start, fmt_date_end)
+            one = self._get_rates_for_daterange(currency.lower(),
+                                                fmt_date_start,
+                                                fmt_date_end)
             if not data:
                 data = {'Date': self.dates}
             data[currency] = one
@@ -102,10 +102,13 @@ class RateForPeriod:
             logger.warning(f'Error during saving file {filename}: {err}')
             return
 
-    def _get_rates_for_daterange(self, currency: str, yyyymmdd1: str, yyyymmdd2: str):
+    def _get_rates_for_daterange(self,
+                                 currency: str,
+                                 yyyymmdd1: str,
+                                 yyyymmdd2: str):
         api = API_CALL.format(currency, yyyymmdd1, yyyymmdd2)
         # logger.debug(api)
-        result = ''
+        rates = None
         response = requests.get(api, headers=self._headers())
         if response.status_code == 200:
             response = json.loads(response.content.decode())
@@ -115,14 +118,15 @@ class RateForPeriod:
                 if self.dates is None:
                     self.dates = dates
                 else:
-                    if self.dates!=dates:
-                        logger.critical('Different date ranges for currencies!')
+                    if self.dates != dates:
+                        logger.critical('Different date ranges found!')
         else:
             logger.warning(
                 f'{response.status_code}: {response.content.decode()}')
         return rates
 
-    def _headers(self, user_agent=None):
+    @staticmethod
+    def _headers(user_agent=None):
         def_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
         if user_agent is None:
             user_agent = def_user_agent

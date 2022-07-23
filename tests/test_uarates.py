@@ -9,7 +9,7 @@ from uarates import RateForPeriod
 class TestRateForPeriod(TestCase):
     def test_get_rates(self):
         t = RateForPeriod('EUR', '2022-01-01', '2022-01-02')
-        #TODO: need to remove date format sensivity
+        # TODO: need to remove the date format sensitivity
         expected = pd.DataFrame([['02.01.2022', 30.9226],
                                  ['01.01.2022', 30.9226]],
                                 columns=['Date', 'EUR'])
