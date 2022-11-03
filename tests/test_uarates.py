@@ -1,19 +1,16 @@
 import os
 from unittest import TestCase
 
-import pandas as pd
-
 from uarates import RateForPeriod
 
 
 class TestRateForPeriod(TestCase):
     def test_get_rates(self):
         t = RateForPeriod('EUR', '2022-01-01', '2022-01-02')
-        expected = pd.DataFrame([['2022-01-01', 30.9226],
-                                 ['2022-01-02', 30.9226]],
-                                columns=['Date', 'EUR'])
+        expected = [['2022-01-01', 30.9226],
+                    ['2022-01-02', 30.9226]]
         received = t.get_rates().df
-        assert received.equals(expected)
+        assert received == expected
 
     def test_save_xlsx(self):
         t = RateForPeriod('EUR', '2022-01-01', '2022-01-02')

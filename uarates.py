@@ -7,14 +7,11 @@ from os.path import basename
 
 import openpyxl
 from openpyxl.styles import Font
-from openpyxl.utils.dataframe import dataframe_to_rows
-
-import pandas as pd
 
 import requests
 
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 log_name = basename(__file__).split('.')[0]
 logging.basicConfig(filename=f'{log_name}.log', level=logging.INFO,
                     format='%(asctime)s %(filename)s %(funcName)s %(message)s')
@@ -54,7 +51,8 @@ class RateForPeriod:
         curs = '_'.join(currencies)
         self.filename = f'rates_{curs}_{self.start_date.strftime(d_fmt)}_' \
                         f'{self.end_date.strftime(d_fmt)}'
-        self.df = None  # will be dataFrame with rates
+        self.headers = ['Date'] + self.currencies
+        self.df = None  # will be data with rates
 
     def get_rates(self):
         logger.info(f'Getting {self.currencies} rates for '
@@ -70,26 +68,24 @@ class RateForPeriod:
             the_date = the_date + timedelta(days=1)
             data.append(row)
 
-        df = pd.DataFrame(data, columns=['Date']+self.currencies)
-        self.df = df
+        self.df = data
         return self  # for chain of methods ability
 
     def save_xlsx(self, filename: str):
-        if self.df.empty:
+        if not self.df:
             e = '[Save error] DataFrame is empty'
             logger.warning(e)
             raise Exception(e)
-        headers = list(self.df)  # get the headers
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Bank rates'  # set the name of sheet
 
-        # pandas dataFrame to openpyxl worksheet:
-        for r in dataframe_to_rows(self.df, index=False, header=True):
+        ws.append(self.headers)
+        for r in self.df:
             ws.append(r)
 
         # set the bold font for header:
-        for index, column_name in enumerate(headers):
+        for index, column_name in enumerate(self.headers):
             cell = ws.cell(row=1, column=index+1)
             cell.font = Font(bold=True)
 
@@ -122,7 +118,8 @@ class RateForPeriod:
                 f'{response.status_code}: {response.content.decode()}')
         return result
 
-    def _headers(self, user_agent=None):
+    @staticmethod
+    def _headers(user_agent=None):
         def_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
         if user_agent is None:
             user_agent = def_user_agent
